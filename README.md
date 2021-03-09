@@ -1,0 +1,2 @@
+# kazooiebot
+A discord bot
