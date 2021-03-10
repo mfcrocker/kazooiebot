@@ -33,25 +33,25 @@ var (
 			Description: "Just birdass",
 		},
 		{
-			Name:        "addpronouns",
-			Description: "Add a pronoun role",
+			Name:        "addrole",
+			Description: "Add a role to yourself, eg pronouns or colours",
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Type:        discordgo.ApplicationCommandOptionRole,
-					Name:        "pronouns",
-					Description: "The pronouns to add",
+					Name:        "role",
+					Description: "The role to add",
 					Required:    true,
 				},
 			},
 		},
 		{
-			Name:        "removepronouns",
-			Description: "Remove a pronoun role",
+			Name:        "removerole",
+			Description: "Remove a role from yourself",
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Type:        discordgo.ApplicationCommandOptionRole,
-					Name:        "pronouns",
-					Description: "The pronouns to add",
+					Name:        "role",
+					Description: "The role to add",
 					Required:    true,
 				},
 			},
@@ -67,7 +67,7 @@ var (
 				},
 			})
 		},
-		"addpronouns": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		"addrole": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionApplicationCommandResponseData{
@@ -76,7 +76,7 @@ var (
 			})
 			s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, i.Data.Options[0].RoleValue(nil, "").ID)
 		},
-		"removepronouns": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		"removerole": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionApplicationCommandResponseData{
