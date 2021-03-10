@@ -3,8 +3,10 @@ package main
 import (
 	"flag"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -50,8 +52,20 @@ var (
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Type:        discordgo.ApplicationCommandOptionRole,
-					Name:        "role",
+					Name:        "rolerole",
 					Description: "The role to add",
+					Required:    true,
+				},
+			},
+		},
+		{
+			Name:        "bigemoji",
+			Description: "Emoji, but T H I C C",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type:        discordgo.ApplicationCommandOptionString,
+					Name:        "emoji",
+					Description: "The emoji to biggify",
 					Required:    true,
 				},
 			},
@@ -84,6 +98,30 @@ var (
 				},
 			})
 			s.GuildMemberRoleRemove(i.GuildID, i.Member.User.ID, i.Data.Options[0].RoleValue(nil, "").ID)
+		},
+		"bigemoji": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			if !strings.Contains(i.Data.Options[0].StringValue(), ":") {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Flags: 64,
+					},
+				})
+			} else {
+				emojiID := strings.TrimSuffix(strings.Split(i.Data.Options[0].StringValue(), ":")[2], ">")
+				emojiURI := "https://cdn.discordapp.com/emojis/" + emojiID + ".gif?v=1"
+				// Check if its a gif or not
+				resp, err := http.Head(emojiURI)
+				if err != nil || resp.StatusCode != http.StatusOK {
+					emojiURI = emojiURI[:len(emojiURI)-8] + ".png?v=1"
+				}
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: emojiURI,
+					},
+				})
+			}
 		},
 	}
 )
