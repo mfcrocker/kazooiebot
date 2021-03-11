@@ -109,7 +109,7 @@ var (
 				{
 					Type:        discordgo.ApplicationCommandOptionString,
 					Name:        "when",
-					Description: "When should I remind you?",
+					Description: "When should I remind you? (format: 5d3h30m)",
 					Required:    true,
 				},
 			},
