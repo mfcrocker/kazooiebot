@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"time"
 
@@ -107,14 +108,8 @@ var (
 				},
 				{
 					Type:        discordgo.ApplicationCommandOptionString,
-					Name:        "date",
-					Description: "The date to remind you, in YYYY-MM-DD format",
-					Required:    true,
-				},
-				{
-					Type:        discordgo.ApplicationCommandOptionString,
-					Name:        "time",
-					Description: "The time to remind you, in 24-hour HH:MM format (use UTC)",
+					Name:        "when",
+					Description: "When should I remind you?",
 					Required:    true,
 				},
 			},
@@ -181,17 +176,36 @@ var (
 			})
 		},
 		"reminder": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			reminderDate := i.Data.Options[1].StringValue() + "T" + i.Data.Options[2].StringValue() + ".000Z"
-			reminderTimestamp, err := time.Parse(time.RFC3339, reminderDate)
+			timeString := i.Data.Options[1].StringValue()
+			offset := 0
+			parseString := timeString
+			if strings.Contains(timeString, "d") {
+				parseString = strings.Split(timeString, "d")[0]
+				days, err := strconv.Atoi(parseString[:len(parseString)-1])
+				if err != nil {
+					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+						Type: discordgo.InteractionResponseChannelMessageWithSource,
+						Data: &discordgo.InteractionApplicationCommandResponseData{
+							Content: "That's not the right date or time format. Example: 5d3h30m for a reminder in 5 1/2 hours",
+						},
+					})
+					return
+				}
+				offset += days * 24
+				parseString = strings.Split(timeString, "d")[0]
+			}
+
+			parsedDuration, err := time.ParseDuration(parseString)
 			if err != nil {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionApplicationCommandResponseData{
-						Content: "That's not the right date or time format; use YYYY-MM-DD HH:MM in 24 hour clock, UTC",
+						Content: "That's not the right date or time format. Example: 5d3h30m for a reminder in 5 1/2 hours",
 					},
 				})
 				return
 			}
+			reminderTimestamp := time.Now().Add(parsedDuration)
 
 			_, _, err = client.Collection("reminders").Add(ctx, map[string]interface{}{
 				"userID":   i.Member.User.ID,
