@@ -114,6 +114,18 @@ var (
 				},
 			},
 		},
+		{
+			Name:        "suggestion",
+			Description: "Make a feature request for this bot of bird and ass",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type:        discordgo.ApplicationCommandOptionString,
+					Name:        "suggestion",
+					Description: "What do you want to see implemented?",
+					Required:    true,
+				},
+			},
+		},
 	}
 
 	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
@@ -232,6 +244,19 @@ var (
 					Content: "Okay, I've set a reminder up to remind you of " + i.Data.Options[0].StringValue(),
 				},
 			})
+		},
+		"suggestion": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionApplicationCommandResponseData{
+					Flags: 64,
+				},
+			})
+			channel, err := session.UserChannelCreate(fmt.Sprintf("%v", "147856569730596864"))
+			if err != nil {
+				fmt.Printf("Couldn't talk to user: %v", err)
+			}
+			_, err = session.ChannelMessageSend(channel.ID, "You've had a suggestion from "+i.Member.Nick+": "+i.Data.Options[0].StringValue())
 		},
 	}
 )
