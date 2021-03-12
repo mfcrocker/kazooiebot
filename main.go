@@ -256,7 +256,7 @@ var (
 			if err != nil {
 				fmt.Printf("Couldn't talk to user: %v", err)
 			}
-			_, err = session.ChannelMessageSend(channel.ID, "You've had a suggestion from "+i.Member.Nick+": "+i.Data.Options[0].StringValue())
+			_, err = session.ChannelMessageSend(channel.ID, "You've had a suggestion from "+i.Member.User.Username+": "+i.Data.Options[0].StringValue())
 		},
 	}
 )
