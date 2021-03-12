@@ -192,10 +192,12 @@ var (
 					return
 				}
 				offset += days * 24
-				parseString = strings.Split(timeString, "d")[0]
+				parseString = strings.Split(timeString, "d")[1]
 			}
 
 			parsedDuration, err := time.ParseDuration(parseString)
+			parsedOffset, _ := time.ParseDuration(strconv.Itoa(offset) + "h")
+			parsedDuration += parsedOffset
 			if err != nil {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
