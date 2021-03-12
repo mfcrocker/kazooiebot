@@ -271,6 +271,7 @@ func checkReminders() {
 func main() {
 	c := cron.New()
 	c.AddFunc("@every 1m", func() { checkReminders() })
+	c.Start()
 	session.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
 		log.Println("Ready to birdass")
 	})
