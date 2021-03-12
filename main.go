@@ -222,6 +222,7 @@ var (
 						Content: "Something went wrong at my end so I didn't save your reminder",
 					},
 				})
+				log.Printf("Error saving record to Firestore: %v", err)
 				return
 			}
 
