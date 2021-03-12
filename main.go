@@ -177,12 +177,11 @@ var (
 		},
 		"reminder": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			timeString := i.Data.Options[1].StringValue()
-			log.Printf("Time string: %v", timeString)
 			offset := 0
 			parseString := timeString
 			if strings.Contains(timeString, "d") {
 				parseString = strings.Split(timeString, "d")[0]
-				days, err := strconv.Atoi(parseString[:len(parseString)-1])
+				days, err := strconv.Atoi(parseString)
 				if err != nil {
 					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 						Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -190,7 +189,6 @@ var (
 							Content: "That's not the right date or time format. Example: 5d3h30m for a reminder in 5 1/2 hours",
 						},
 					})
-					log.Printf("Error parsing time string: %v", err)
 					return
 				}
 				offset += days * 24
@@ -207,7 +205,6 @@ var (
 						Content: "That's not the right date or time format. Example: 5d3h30m for a reminder in 5 1/2 hours",
 					},
 				})
-				log.Printf("Error parsing time string: %v", err)
 				return
 			}
 			reminderTimestamp := time.Now().Add(parsedDuration)
