@@ -20,8 +20,9 @@ import (
 )
 
 var (
-	GuildID  = flag.String("g", "", "Guild ID")
-	BotToken = flag.String("t", "", "Bot token")
+	GuildID    = flag.String("g", "", "Guild ID")
+	BotToken   = flag.String("t", "", "Bot token")
+	GCPProject = flag.String("p", "", "GCP Project")
 )
 
 var session *discordgo.Session
@@ -38,15 +39,17 @@ func init() {
 	}
 
 	ctx = context.Background()
-	conf := &firebase.Config{ProjectID: "kazooie-bot"}
+	conf := &firebase.Config{ProjectID: *GCPProject}
 	app, err := firebase.NewApp(ctx, conf)
 	if err != nil {
-		log.Fatalf("Couldn't connect to Firestore: %v", err)
+		log.Printf("Couldn't connect to Firestore, so /reminders will not work: %v", err)
+		return
 	}
 
 	client, err = app.Firestore(ctx)
 	if err != nil {
-		log.Fatalf("Couldn't connect to Firestore: %v", err)
+		log.Printf("Couldn't connect to Firestore, so /reminders will not work: %v", err)
+		return
 	}
 }
 
@@ -188,6 +191,16 @@ var (
 			})
 		},
 		"reminder": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			if client == nil {
+				// We're not connected to GCP, don't let them do this
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: "I haven't been set up to allow reminders, please moan at whoever set me up",
+					},
+				})
+				return
+			}
 			timeString := i.Data.Options[1].StringValue()
 			offset := 0
 			parseString := timeString
