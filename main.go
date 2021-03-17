@@ -5,9 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -159,28 +159,29 @@ var (
 			s.GuildMemberRoleRemove(i.GuildID, i.Member.User.ID, i.Data.Options[0].RoleValue(nil, "").ID)
 		},
 		"bigemoji": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			if !strings.Contains(i.Data.Options[0].StringValue(), ":") {
+			valid, _ := regexp.MatchString(`<a?:\w+:\d+>`, i.Data.Options[0].StringValue())
+			if !valid {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionApplicationCommandResponseData{
 						Flags: 64,
 					},
 				})
-			} else {
-				emojiID := strings.TrimSuffix(strings.Split(i.Data.Options[0].StringValue(), ":")[2], ">")
-				emojiURI := "https://cdn.discordapp.com/emojis/" + emojiID + ".gif?v=1"
-				// Check if its a gif or not
-				resp, err := http.Head(emojiURI)
-				if err != nil || resp.StatusCode != http.StatusOK {
-					emojiURI = emojiURI[:len(emojiURI)-8] + ".png?v=1"
-				}
-				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
-						Content: emojiURI,
-					},
-				})
+				return
 			}
+			emojiID := strings.TrimSuffix(strings.Split(i.Data.Options[0].StringValue(), ":")[2], ">")
+			animated, _ := regexp.MatchString(`<a:\w+:\d+>`, i.Data.Options[0].StringValue())
+			suffix := ".png?v=1"
+			if animated {
+				suffix = ".gif?v=1"
+			}
+			emojiURI := "https://cdn.discordapp.com/emojis/" + emojiID + suffix
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionApplicationCommandResponseData{
+					Content: emojiURI,
+				},
+			})
 		},
 		"bogart": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
