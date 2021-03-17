@@ -307,9 +307,13 @@ func checkReminders() {
 }
 
 func main() {
-	c := cron.New()
-	c.AddFunc("@every 1m", func() { checkReminders() })
-	c.Start()
+	var c *cron.Cron
+	if client != nil {
+		c := cron.New()
+		c.AddFunc("@every 1m", func() { checkReminders() })
+		c.Start()
+		defer client.Close()
+	}
 	session.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
 		log.Println("Ready to birdass")
 	})
@@ -326,11 +330,12 @@ func main() {
 	}
 
 	defer session.Close()
-	defer client.Close()
 
 	stop := make(chan os.Signal)
 	signal.Notify(stop, os.Interrupt)
 	<-stop
 	log.Println("Shutting down bird asses")
-	c.Stop()
+	if c != nil {
+		c.Stop()
+	}
 }
