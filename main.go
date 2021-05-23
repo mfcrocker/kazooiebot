@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"regexp"
@@ -29,6 +32,16 @@ var session *discordgo.Session
 var ctx context.Context
 var client *firestore.Client
 
+type month struct {
+	StartTime string `json:"start_time"`
+	Days      []day  `json:"days"`
+}
+
+type day struct {
+	Day    int    `json:"day"`
+	Prompt string `json:"prompt"`
+}
+
 func init() { flag.Parse() }
 
 func init() {
@@ -42,13 +55,13 @@ func init() {
 	conf := &firebase.Config{ProjectID: *GCPProject}
 	app, err := firebase.NewApp(ctx, conf)
 	if err != nil {
-		log.Printf("Couldn't connect to Firestore, so /reminders will not work: %v", err)
+		log.Printf("Couldn't connect to Firestore, so many commands will not work: %v", err)
 		return
 	}
 
 	client, err = app.Firestore(ctx)
 	if err != nil {
-		log.Printf("Couldn't connect to Firestore, so /reminders will not work: %v", err)
+		log.Printf("Couldn't connect to Firestore, so many commands will not work: %v", err)
 		return
 	}
 }
@@ -125,6 +138,18 @@ var (
 					Type:        discordgo.ApplicationCommandOptionString,
 					Name:        "suggestion",
 					Description: "What do you want to see implemented?",
+					Required:    true,
+				},
+			},
+		},
+		{
+			Name:        "musicsetup",
+			Description: "Sets up a music month - only works for mfcrocker",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type:        discordgo.ApplicationCommandOptionString,
+					Name:        "file",
+					Description: "A URL to a text file",
 					Required:    true,
 				},
 			},
@@ -271,6 +296,107 @@ var (
 				fmt.Printf("Couldn't talk to user: %v", err)
 			}
 			_, err = session.ChannelMessageSend(channel.ID, "You've had a suggestion from "+i.Member.User.Username+": "+i.Data.Options[0].StringValue())
+		},
+		"musicsetup": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			if client == nil {
+				// We're not connected to GCP, don't let them do this
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: "I haven't been set up to allow reminders, please moan at whoever set me up",
+					},
+				})
+				return
+			}
+			if i.Member.User.ID != "147856569730596864" {
+				// You ain't me
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: "Please ask mfcrocker to set this up!",
+					},
+				})
+				return
+			}
+			if !strings.HasSuffix(i.Data.Options[0].StringValue(), ".json") {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: "Give me a .json file",
+					},
+				})
+				return
+			}
+
+			resp, err := http.Get(i.Data.Options[0].StringValue())
+			if err != nil {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: "Couldn't get the file from the URL provided",
+					},
+				})
+				return
+			}
+			defer resp.Body.Close()
+
+			monthData, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: "Error reading the file bytes",
+					},
+				})
+				return
+			}
+
+			var musicMonth month
+			err = json.Unmarshal(monthData, &musicMonth)
+			if err != nil {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: "Invalid JSON",
+					},
+				})
+				return
+			}
+
+			// Double-check we've had a real RFC3339 date-time string
+			layout := "2006-01-02T15:04:05Z07:00"
+			startTime, err := time.Parse(layout, musicMonth.StartTime)
+			if err != nil {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: "Invalid date format: needs 2006-01-02T15:04:05Z07:00",
+					},
+				})
+				return
+			}
+
+			_, _, err = client.Collection("musicmonth").Add(ctx, musicMonth)
+
+			if err != nil {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: "Something went wrong at my end so I didn't save the month",
+					},
+				})
+				log.Printf("Error saving record to Firestore: %v", err)
+				return
+			}
+
+			prettyDateFormat := "January 2, 2006"
+
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionApplicationCommandResponseData{
+					Content: "Okay, I've set up a music month beginning on " + startTime.Format(prettyDateFormat),
+				},
+			})
 		},
 	}
 )
