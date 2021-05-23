@@ -364,8 +364,7 @@ var (
 			}
 
 			// Double-check we've had a real RFC3339 date-time string
-			layout := "2006-01-02T15:04:05Z07:00"
-			startTime, err := time.Parse(layout, musicMonth.StartTime)
+			startTime, err := time.Parse(time.RFC3339, musicMonth.StartTime)
 			if err != nil {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
