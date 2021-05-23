@@ -373,6 +373,7 @@ var (
 						Content: "Invalid date format: needs 2006-01-02T15:04:05Z07:00",
 					},
 				})
+				log.Printf("Error parsing date: %v", err)
 				return
 			}
 
