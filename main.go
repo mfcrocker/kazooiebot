@@ -158,7 +158,19 @@ var (
 		},
 		{
 			Name:        "musicmonth",
-			Description: "Return the current music month, if any",
+			Description: "Get the current music month, if any",
+		},
+		{
+			Name:        "musicprompt",
+			Description: "Get the prompt for a music month",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type:        discordgo.ApplicationCommandOptionInteger,
+					Name:        "day",
+					Description: "The day to retrieve (gets today if not provided)",
+					Required:    false,
+				},
+			},
 		},
 	}
 
@@ -404,7 +416,7 @@ var (
 			// Give a couple of days grace on this - would normally be -now.Day() + 1
 			currentMonthStart := now.AddDate(0, 0, -now.Day()-1)
 			currentMonthEnd := now.AddDate(0, 1, -now.Day())
-			iter := client.Collection("musicmonth").Where("StartTime", ">", currentMonthStart).OrderBy("StartTime", firestore.Asc).Documents(ctx)
+			iter := client.Collection("musicmonth").Where("StartTime", ">", currentMonthStart).OrderBy("StartTime", firestore.Asc).Limit(1).Documents(ctx)
 			docs, _ := iter.GetAll()
 			if len(docs) == 0 {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -435,6 +447,47 @@ var (
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionApplicationCommandResponseData{
 					Content: response.String(),
+				},
+			})
+		},
+		"musicprompt": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			now := time.Now()
+			day := now.Day()
+			if len(i.Data.Options) > 0 {
+				day = int(i.Data.Options[0].IntValue())
+			}
+
+			// Give a couple of days grace on this - would normally be -now.Day() + 1
+			currentMonthStart := now.AddDate(0, 0, -now.Day()-1)
+			currentMonthEnd := now.AddDate(0, 1, -now.Day()+1)
+			iter := client.Collection("musicmonth").Where("StartTime", ">", currentMonthStart).Where("StartTime", "<", currentMonthEnd).OrderBy("StartTime", firestore.Asc).Limit(1).Documents(ctx)
+			docs, _ := iter.GetAll()
+			if len(docs) == 0 {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: "No currently active music month",
+					},
+				})
+				return
+			}
+			var currentMonth month
+			docs[0].DataTo(&currentMonth)
+			for _, prompt := range currentMonth.Days {
+				if prompt.Day == day {
+					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+						Type: discordgo.InteractionResponseChannelMessageWithSource,
+						Data: &discordgo.InteractionApplicationCommandResponseData{
+							Content: "Prompt for day " + strconv.Itoa(prompt.Day) + ": " + prompt.Prompt,
+						},
+					})
+					return
+				}
+			}
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionApplicationCommandResponseData{
+					Content: "No prompt found for day " + strconv.Itoa(day),
 				},
 			})
 		},
