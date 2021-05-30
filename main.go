@@ -421,9 +421,9 @@ var (
 			var response strings.Builder
 
 			if currentMonth.StartTime.After(currentMonthEnd) {
-				response.WriteString("There's no current music month; the next begins on " + currentMonth.StartTime.Format(prettyDateFormat) + "\n\n")
+				response.WriteString("There's no current music month; the next begins on " + currentMonth.StartTime.Format(prettyDateFormat) + "\n")
 			} else {
-				response.WriteString("Current music month: \n\n")
+				response.WriteString("Current music month: \n")
 			}
 			response.WriteString("```")
 			for _, day := range currentMonth.Days {
