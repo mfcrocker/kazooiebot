@@ -32,6 +32,8 @@ var session *discordgo.Session
 var ctx context.Context
 var client *firestore.Client
 
+const prettyDateFormat = "January 2, 2006"
+
 type month struct {
 	StartTime time.Time `json:"start_time"`
 	Days      []day     `json:"days"`
@@ -380,8 +382,6 @@ var (
 				return
 			}
 
-			prettyDateFormat := "January 2, 2006"
-
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionApplicationCommandResponseData{
@@ -400,6 +400,41 @@ var (
 				})
 				return
 			}
+			now := time.Now()
+			// Give a couple of days grace on this - would normally be -now.Day() + 1
+			currentMonthStart := now.AddDate(0, 0, -now.Day()-1)
+			currentMonthEnd := currentMonthStart.AddDate(0, 1, -now.Day())
+			iter := client.Collection("musicmonth").Where("startTime", ">", currentMonthStart).OrderBy("startTime", firestore.Asc).Limit(1).Documents(ctx)
+			docs, _ := iter.GetAll()
+			if len(docs) == 0 {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: "No music month planned",
+					},
+				})
+				return
+			}
+
+			var currentMonth month
+			docs[0].DataTo(&currentMonth)
+			var response strings.Builder
+
+			if currentMonth.StartTime.After(currentMonthEnd) {
+				response.WriteString("There's no current music month; the next begins on " + currentMonth.StartTime.Format(prettyDateFormat))
+			} else {
+				response.WriteString("Current music month:")
+			}
+			for _, day := range currentMonth.Days {
+				response.WriteString(currentMonth.StartTime.Format("January") + " " + strconv.Itoa(day.Day) + ": " + day.Prompt)
+			}
+
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionApplicationCommandResponseData{
+					Content: response.String(),
+				},
+			})
 		},
 	}
 )
