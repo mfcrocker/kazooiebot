@@ -425,9 +425,11 @@ var (
 			} else {
 				response.WriteString("Current music month: \n\n")
 			}
+			response.WriteString("```")
 			for _, day := range currentMonth.Days {
 				response.WriteString(currentMonth.StartTime.Format("January") + " " + strconv.Itoa(day.Day) + ": " + day.Prompt + "\n")
 			}
+			response.WriteString("```")
 
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
