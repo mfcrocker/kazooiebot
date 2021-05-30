@@ -421,12 +421,12 @@ var (
 			var response strings.Builder
 
 			if currentMonth.StartTime.After(currentMonthEnd) {
-				response.WriteString("There's no current music month; the next begins on " + currentMonth.StartTime.Format(prettyDateFormat))
+				response.WriteString("There's no current music month; the next begins on " + currentMonth.StartTime.Format(prettyDateFormat) + "\n\n")
 			} else {
-				response.WriteString("Current music month:")
+				response.WriteString("Current music month: \n\n")
 			}
 			for _, day := range currentMonth.Days {
-				response.WriteString(currentMonth.StartTime.Format("January") + " " + strconv.Itoa(day.Day) + ": " + day.Prompt)
+				response.WriteString(currentMonth.StartTime.Format("January") + " " + strconv.Itoa(day.Day) + ": " + day.Prompt + "\n")
 			}
 
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
