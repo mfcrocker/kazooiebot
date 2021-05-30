@@ -33,8 +33,8 @@ var ctx context.Context
 var client *firestore.Client
 
 type month struct {
-	StartTime string `json:"start_time"`
-	Days      []day  `json:"days"`
+	StartTime time.Time `json:"start_time"`
+	Days      []day     `json:"days"`
 }
 
 type day struct {
@@ -153,6 +153,10 @@ var (
 					Required:    true,
 				},
 			},
+		},
+		{
+			Name:        "musicmonth",
+			Description: "Return the current music month, if any",
 		},
 	}
 
@@ -303,7 +307,7 @@ var (
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
 					Data: &discordgo.InteractionApplicationCommandResponseData{
-						Content: "I haven't been set up to allow reminders, please moan at whoever set me up",
+						Content: "I haven't been set up to allow music months, please moan at whoever set me up",
 					},
 				})
 				return
@@ -363,19 +367,6 @@ var (
 				return
 			}
 
-			// Double-check we've had a real RFC3339 date-time string
-			startTime, err := time.Parse(time.RFC3339, musicMonth.StartTime)
-			if err != nil {
-				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
-						Content: "Invalid date format: needs 2006-01-02T15:04:05Z07:00",
-					},
-				})
-				log.Printf("Error parsing date: %v", err)
-				return
-			}
-
 			_, _, err = client.Collection("musicmonth").Add(ctx, musicMonth)
 
 			if err != nil {
@@ -394,9 +385,21 @@ var (
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionApplicationCommandResponseData{
-					Content: "Okay, I've set up a music month beginning on " + startTime.Format(prettyDateFormat),
+					Content: "Okay, I've set up a music month beginning on " + musicMonth.StartTime.Format(prettyDateFormat),
 				},
 			})
+		},
+		"musicmonth": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			if client == nil {
+				// We're not connected to GCP, don't let them do this
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: "I haven't been set up to allow music months, please moan at whoever set me up",
+					},
+				})
+				return
+			}
 		},
 	}
 )
