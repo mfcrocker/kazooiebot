@@ -172,6 +172,10 @@ var (
 				},
 			},
 		},
+		{
+			Name:        "utc",
+			Description: "Gets the current time in UTC",
+		},
 	}
 
 	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
@@ -490,6 +494,15 @@ var (
 					Content: "No prompt found for day " + strconv.Itoa(day),
 				},
 			})
+		},
+		"utc": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionApplicationCommandResponseData{
+					Content: "The current time is: " + time.Now().UTC().Format("15:04:05 MST Jan _2"),
+				},
+			})
+			return
 		},
 	}
 )
