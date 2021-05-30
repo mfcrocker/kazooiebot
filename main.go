@@ -403,10 +403,8 @@ var (
 			now := time.Now()
 			// Give a couple of days grace on this - would normally be -now.Day() + 1
 			currentMonthStart := now.AddDate(0, 0, -now.Day()-1)
-			log.Println(currentMonthStart)
 			currentMonthEnd := now.AddDate(0, 1, -now.Day())
-			log.Println(currentMonthEnd)
-			iter := client.Collection("musicmonth").Where("startTime", ">", currentMonthStart).OrderBy("startTime", firestore.Asc).Documents(ctx)
+			iter := client.Collection("musicmonth").Where("StartTime", ">", currentMonthStart).OrderBy("StartTime", firestore.Asc).Documents(ctx)
 			docs, _ := iter.GetAll()
 			if len(docs) == 0 {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
