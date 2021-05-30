@@ -459,7 +459,7 @@ var (
 
 			// Give a couple of days grace on this - would normally be -now.Day() + 1
 			currentMonthStart := now.AddDate(0, 0, -now.Day()-1)
-			currentMonthEnd := now.AddDate(0, 1, -now.Day()+1)
+			currentMonthEnd := now.AddDate(0, 1, -now.Day())
 			iter := client.Collection("musicmonth").Where("StartTime", ">", currentMonthStart).Where("StartTime", "<", currentMonthEnd).OrderBy("StartTime", firestore.Asc).Limit(1).Documents(ctx)
 			docs, _ := iter.GetAll()
 			if len(docs) == 0 {
