@@ -173,6 +173,24 @@ var (
 			},
 		},
 		{
+			Name:        "music",
+			Description: "Set your song for a prompt",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type:        discordgo.ApplicationCommandOptionString,
+					Name:        "song",
+					Description: "The song to submit, ideally as a YouTube link",
+					Required:    true,
+				},
+				{
+					Type:        discordgo.ApplicationCommandOptionInteger,
+					Name:        "day",
+					Description: "The day to set (sets today if not provided)",
+					Required:    false,
+				},
+			},
+		},
+		{
 			Name:        "utc",
 			Description: "Gets the current time in UTC",
 		},
@@ -495,6 +513,35 @@ var (
 				},
 			})
 		},
+		"music": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			month := time.Now().UTC().Format("Jan 2006")
+			day := time.Now().UTC().Day()
+			var response strings.Builder
+			if len(i.Data.Options) > 1 {
+				day = int(i.Data.Options[1].IntValue())
+			}
+			iter := client.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", month).Where("day", "==", day).Documents(ctx)
+			docs, _ := iter.GetAll()
+			if len(docs) > 0 {
+				response.WriteString("Replacing your old pick of " + docs[0].Data()["song"].(string) + "/n")
+				docs[0].Ref.Delete(ctx)
+			}
+
+			client.Collection("music").Add(ctx, map[string]interface{}{
+				"userID": i.Member.User.ID,
+				"month":  month,
+				"day":    day,
+				"song":   i.Data.Options[0].StringValue(),
+			})
+
+			response.WriteString("Submitting " + i.Data.Options[0].StringValue() + " for day " + strconv.Itoa(day))
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionApplicationCommandResponseData{
+					Content: response.String(),
+				},
+			})
+		},
 		"utc": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -502,7 +549,6 @@ var (
 					Content: "The current time is: " + time.Now().UTC().Format("15:04:05 MST Jan _2"),
 				},
 			})
-			return
 		},
 	}
 )
