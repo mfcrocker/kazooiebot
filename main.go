@@ -434,7 +434,7 @@ var (
 				})
 				return
 			}
-			now := time.Now()
+			now := time.Now().UTC()
 			// Give a couple of days grace on this - would normally be -now.Day() + 1
 			currentMonthStart := now.AddDate(0, 0, -now.Day()-1)
 			currentMonthEnd := now.AddDate(0, 1, -now.Day())
@@ -473,7 +473,7 @@ var (
 			})
 		},
 		"musicprompt": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			now := time.Now()
+			now := time.Now().UTC()
 			day := now.Day()
 			if len(i.Data.Options) > 0 {
 				day = int(i.Data.Options[0].IntValue())
@@ -514,14 +514,29 @@ var (
 			})
 		},
 		"music": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			month := time.Now().UTC().Format("Jan 2006")
-			day := time.Now().UTC().Day()
+			now := time.Now().UTC()
+			// Give a couple of days grace on this - would normally be -now.Day() + 1
+			currentMonthStart := now.AddDate(0, 0, -now.Day()-1)
+			currentMonthEnd := now.AddDate(0, 1, -now.Day())
+			iter := client.Collection("musicmonth").Where("StartTime", ">", currentMonthStart).Where("StartTime", "<", currentMonthEnd).OrderBy("StartTime", firestore.Asc).Limit(1).Documents(ctx)
+			docs, _ := iter.GetAll()
+			if len(docs) == 0 {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: "No currently active music month",
+					},
+				})
+				return
+			}
+			month := now.Format("Jan 2006")
+			day := now.Day()
 			var response strings.Builder
 			if len(i.Data.Options) > 1 {
 				day = int(i.Data.Options[1].IntValue())
 			}
-			iter := client.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", month).Where("day", "==", day).Documents(ctx)
-			docs, _ := iter.GetAll()
+			iter = client.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", month).Where("day", "==", day).Documents(ctx)
+			docs, _ = iter.GetAll()
 			if len(docs) > 0 {
 				response.WriteString("Replacing your old pick of " + docs[0].Data()["song"].(string) + "/n")
 				docs[0].Ref.Delete(ctx)
