@@ -538,7 +538,7 @@ var (
 			iter = client.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", month).Where("day", "==", day).Documents(ctx)
 			docs, _ = iter.GetAll()
 			if len(docs) > 0 {
-				response.WriteString("Replacing your old pick of " + docs[0].Data()["song"].(string) + "/n")
+				response.WriteString("Replacing your old pick of " + docs[0].Data()["song"].(string) + "\n")
 				docs[0].Ref.Delete(ctx)
 			}
 
