@@ -180,6 +180,10 @@ var (
 			},
 		},
 		{
+			Name:        "utc",
+			Description: "Gets the current time in UTC",
+		},
+		{
 			Name:        "musicsetup",
 			Description: "Sets up a music month - only works for mfcrocker",
 			Options: []*discordgo.ApplicationCommandOption{
@@ -226,8 +230,22 @@ var (
 			},
 		},
 		{
-			Name:        "utc",
-			Description: "Gets the current time in UTC",
+			Name:        "musicplaylist",
+			Description: "Create/retrieve a playlist of your songs for the most recent music month",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type:        discordgo.ApplicationCommandOptionBoolean,
+					Name:        "mine",
+					Description: "Whether you want the whole server's songs or just your own",
+					Required:    true,
+				},
+				{
+					Type:        discordgo.ApplicationCommandOptionInteger,
+					Name:        "day",
+					Description: "Which day's songs to retrieve (returns every day if empty)",
+					Required:    false,
+				},
+			},
 		},
 	}
 
@@ -371,6 +389,14 @@ var (
 				fmt.Printf("Couldn't talk to user: %v", err)
 			}
 			_, err = session.ChannelMessageSend(channel.ID, "You've had a suggestion from "+i.Member.User.Username+": "+i.Data.Options[0].StringValue())
+		},
+		"utc": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionApplicationCommandResponseData{
+					Content: "The current time is: " + time.Now().UTC().Format("15:04:05 MST Jan _2"),
+				},
+			})
 		},
 		"musicsetup": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			if firestoreClient == nil {
@@ -564,13 +590,18 @@ var (
 				})
 				return
 			}
-			month := now.Format("Jan 2006")
+
+			var retrievedMonth month
+			docs[0].DataTo(&retrievedMonth)
+			monthName := retrievedMonth.StartTime.Format("Jan 2006"
 			day := now.Day()
-			var response strings.Builder
 			if len(i.Data.Options) > 1 {
 				day = int(i.Data.Options[1].IntValue())
 			}
-			iter = firestoreClient.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", month).Where("day", "==", day).Documents(ctx)
+
+			var response strings.Builder
+
+			iter = firestoreClient.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", monthName).Where("day", "==", day).Documents(ctx)
 			docs, _ = iter.GetAll()
 			if len(docs) > 0 {
 				response.WriteString("Replacing your old pick of " + docs[0].Data()["song"].(string) + "\n")
@@ -579,7 +610,7 @@ var (
 
 			firestoreClient.Collection("music").Add(ctx, map[string]interface{}{
 				"userID": i.Member.User.ID,
-				"month":  month,
+				"month":  monthName,
 				"day":    day,
 				"song":   i.Data.Options[0].StringValue(),
 			})
@@ -592,13 +623,56 @@ var (
 				},
 			})
 		},
-		"utc": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
-					Content: "The current time is: " + time.Now().UTC().Format("15:04:05 MST Jan _2"),
-				},
-			})
+		"musicplaylist": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			iter := firestoreClient.Collection("musicmonth").Where("StartTime", "<", time.Now().UTC()).OrderBy("StartTime", firestore.Desc).Limit(1).Documents(ctx)
+			docs, _ := iter.GetAll()
+			if len(docs) == 0 {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionApplicationCommandResponseData{
+						Content: "No music month past or present found",
+					},
+				})
+				return
+			}
+
+			var retrievedMonth month
+			docs[0].DataTo(&retrievedMonth)
+			monthName := retrievedMonth.StartTime.Format("Jan 2006")
+
+			if len(i.Data.Options) > 1 {
+				if i.Data.Options[0].BoolValue() {
+					// Specific day, user only
+					// Don't make a playlist for one song for one person!
+					iter = firestoreClient.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", monthName).Where("day", "==", day).Documents(ctx)
+					docs, _ = iter.GetAll()
+					if len(docs) > 0 {
+						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+							Type: discordgo.InteractionResponseChannelMessageWithSource,
+							Data: &discordgo.InteractionApplicationCommandResponseData{
+								Content: "Your pick for day " + day + " of " + monthName + " was " + docs[0].Data()["song"].(string),
+							},
+						})
+						return
+					} else {
+						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+							Type: discordgo.InteractionResponseChannelMessageWithSource,
+							Data: &discordgo.InteractionApplicationCommandResponseData{
+								Content: "I have no pick saved for you for day " + day + " of " + monthName,
+							},
+						})
+						return
+					}
+				} else {
+					// Specific day, whole server
+				}
+			} else {
+				if i.Data.Options[0].BoolValue() {
+					// Whole month, user only
+				} else {
+					// Whole month, whole server
+				}
+			}
 		},
 	}
 )
