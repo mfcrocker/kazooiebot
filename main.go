@@ -646,7 +646,6 @@ var (
 					// Specific day, user only
 					// Don't make a playlist for one song for one person!
 					iter = firestoreClient.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", monthName).Where("day", "==", day).Documents(ctx)
-					log.Printf("Getting song for user %v for day %v of %v", i.Member.User.ID, day, monthName)
 					docs, _ = iter.GetAll()
 					if len(docs) > 0 {
 						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -667,7 +666,7 @@ var (
 					}
 				} else {
 					// Specific day, whole server
-					iter = firestoreClient.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", monthName).Where("day", "==", day).Documents(ctx)
+					iter = firestoreClient.Collection("music").Where("month", "==", monthName).Where("day", "==", day).Documents(ctx)
 					songDocs, _ := iter.GetAll()
 
 					if len(songDocs) == 0 {
@@ -808,6 +807,13 @@ var (
 							}
 						}
 					}
+					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+						Type: discordgo.InteractionResponseChannelMessageWithSource,
+						Data: &discordgo.InteractionApplicationCommandResponseData{
+							Content: "Playlist for " + monthName + " Day " + strconv.Itoa(day) + ": https://youtube.com/playlist?list=" + playlistID,
+						},
+					})
+					return
 				}
 			} else {
 				if i.Data.Options[0].BoolValue() {
