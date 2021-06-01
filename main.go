@@ -746,9 +746,14 @@ var (
 
 					// Check the songs we have our end are in the playlist and add if necessary
 					for _, gcpsong := range songDocs {
-						gcpID := strings.Split(strings.Split(gcpsong.Data()["song"].(string), "=")[1], "&")[0]
 						inPlaylist := false
-						if !strings.Contains(gcpsong.Data()["song"].(string), "youtube") {
+						gcpID := ""
+						if strings.Contains(gcpsong.Data()["song"].(string), "youtube") {
+							gcpID = strings.Split(strings.Split(gcpsong.Data()["song"].(string), "=")[1], "&")[0]
+						} else if strings.Contains(gcpsong.Data()["song"].(string), "youtu.be") {
+							gcpID = strings.Split(gcpsong.Data()["song"].(string), "/")[3]
+						} else {
+							// Probably not YT
 							continue
 						}
 						for _, ytsong := range playlistVideos {
