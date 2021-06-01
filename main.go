@@ -712,7 +712,7 @@ var (
 
 						playlistID = response.Id
 					} else {
-						playlistID = docs[0].Data()["playlistID"].(string)
+						playlistID = playlistDocs[0].Data()["playlistID"].(string)
 					}
 
 					// Check all the songs on the playlist match the songs we have saved, and insert/delete as appropriate
