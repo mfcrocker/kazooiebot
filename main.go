@@ -629,11 +629,7 @@ var (
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionApplicationCommandResponseData{
-					// Note: this isn't documented, but you can use that if you want to.
-					// This flag just allows you to create messages visible only for the caller of the command
-					// (user who triggered the command)
-					Flags:   1 << 6,
-					Content: "Surprise!",
+					Content: "Getting your playlist",
 				},
 			})
 			msg, _ := s.FollowupMessageCreate(s.State.User.ID, i.Interaction, true, &discordgo.WebhookParams{
