@@ -626,6 +626,16 @@ var (
 		"musicplaylist": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			iter := firestoreClient.Collection("musicmonth").Where("StartTime", "<", time.Now().UTC()).OrderBy("StartTime", firestore.Desc).Limit(1).Documents(ctx)
 			docs, _ := iter.GetAll()
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionApplicationCommandResponseData{
+					// Note: this isn't documented, but you can use that if you want to.
+					// This flag just allows you to create messages visible only for the caller of the command
+					// (user who triggered the command)
+					Flags:   1 << 6,
+					Content: "Surprise!",
+				},
+			})
 			msg, _ := s.FollowupMessageCreate(s.State.User.ID, i.Interaction, true, &discordgo.WebhookParams{
 				Content: "Working on it!",
 			})
