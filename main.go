@@ -744,7 +744,7 @@ func updateAndCreatePlaylist(monthName, userID, username string, day int) string
 			return "Error creating a playlist"
 		}
 		firestoreClient.Collection("musicplaylists").Add(ctx, map[string]interface{}{
-			"userID":     "",
+			"userID":     userID,
 			"month":      monthName,
 			"day":        day,
 			"playlistID": response.Id,
