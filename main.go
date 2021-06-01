@@ -19,18 +19,24 @@ import (
 	firebase "firebase.google.com/go"
 	"github.com/bwmarrin/discordgo"
 	"github.com/robfig/cron/v3"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"google.golang.org/api/iterator"
+	"google.golang.org/api/option"
+	"google.golang.org/api/youtube/v3"
 )
 
 var (
-	GuildID    = flag.String("g", "", "Guild ID")
-	BotToken   = flag.String("t", "", "Bot token")
-	GCPProject = flag.String("p", "", "GCP Project")
+	GuildID      = flag.String("g", "", "Guild ID")
+	BotToken     = flag.String("t", "", "Bot token")
+	GCPProject   = flag.String("p", "", "GCP Project")
+	YouTubeToken = flag.String("y", "", "YouTube token")
 )
 
 var session *discordgo.Session
 var ctx context.Context
-var client *firestore.Client
+var firestoreClient *firestore.Client
+var youtubeClient *youtube.Service
 
 const prettyDateFormat = "January 2, 2006"
 
@@ -61,9 +67,38 @@ func init() {
 		return
 	}
 
-	client, err = app.Firestore(ctx)
+	firestoreClient, err = app.Firestore(ctx)
 	if err != nil {
 		log.Printf("Couldn't connect to Firestore, so many commands will not work: %v", err)
+		return
+	}
+
+	data, err := ioutil.ReadFile("client_secret.json")
+	if err != nil {
+		log.Printf("Couldn't find or decode client_secret.json; YouTube integration will fail: %v", err)
+		return
+	}
+	config, err := google.ConfigFromJSON(data, "https://www.googleapis.com/auth/youtubepartner")
+	if err != nil {
+		log.Printf("Couldn't find or decode client_secret.json; YouTube integration will fail: %v", err)
+		return
+	}
+
+	if *YouTubeToken == "" {
+		url := config.AuthCodeURL("state", oauth2.AccessTypeOffline)
+		fmt.Printf("Please visit the URL for YouTube auth, then restart this with the -y flag: %v. YouTube integration will fail without the flag.", url)
+		return
+	}
+
+	token, err := config.Exchange(ctx, *YouTubeToken)
+	if err != nil {
+		log.Printf("Couldn't connect to YouTube; YouTube integration will fail: %v", err)
+		return
+	}
+
+	youtubeClient, err = youtube.NewService(ctx, option.WithTokenSource(config.TokenSource(ctx, token)))
+	if err != nil {
+		log.Printf("Couldn't connect to YouTube; YouTube integration will fail: %v", err)
 		return
 	}
 }
@@ -257,7 +292,7 @@ var (
 			})
 		},
 		"reminder": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			if client == nil {
+			if firestoreClient == nil {
 				// We're not connected to GCP, don't let them do this
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -300,7 +335,7 @@ var (
 			}
 			reminderTimestamp := time.Now().Add(parsedDuration)
 
-			_, _, err = client.Collection("reminders").Add(ctx, map[string]interface{}{
+			_, _, err = firestoreClient.Collection("reminders").Add(ctx, map[string]interface{}{
 				"userID":   i.Member.User.ID,
 				"reminder": i.Data.Options[0].StringValue(),
 				"date":     reminderTimestamp,
@@ -338,7 +373,7 @@ var (
 			_, err = session.ChannelMessageSend(channel.ID, "You've had a suggestion from "+i.Member.User.Username+": "+i.Data.Options[0].StringValue())
 		},
 		"musicsetup": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			if client == nil {
+			if firestoreClient == nil {
 				// We're not connected to GCP, don't let them do this
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -403,7 +438,7 @@ var (
 				return
 			}
 
-			_, _, err = client.Collection("musicmonth").Add(ctx, musicMonth)
+			_, _, err = firestoreClient.Collection("musicmonth").Add(ctx, musicMonth)
 
 			if err != nil {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -424,7 +459,7 @@ var (
 			})
 		},
 		"musicmonth": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			if client == nil {
+			if firestoreClient == nil {
 				// We're not connected to GCP, don't let them do this
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -438,7 +473,7 @@ var (
 			// Give a couple of days grace on this - would normally be -now.Day() + 1
 			currentMonthStart := now.AddDate(0, 0, -now.Day()-1)
 			currentMonthEnd := now.AddDate(0, 1, -now.Day())
-			iter := client.Collection("musicmonth").Where("StartTime", ">", currentMonthStart).OrderBy("StartTime", firestore.Asc).Limit(1).Documents(ctx)
+			iter := firestoreClient.Collection("musicmonth").Where("StartTime", ">", currentMonthStart).OrderBy("StartTime", firestore.Asc).Limit(1).Documents(ctx)
 			docs, _ := iter.GetAll()
 			if len(docs) == 0 {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -482,7 +517,7 @@ var (
 			// Give a couple of days grace on this - would normally be -now.Day() + 1
 			currentMonthStart := now.AddDate(0, 0, -now.Day()-1)
 			currentMonthEnd := now.AddDate(0, 1, -now.Day())
-			iter := client.Collection("musicmonth").Where("StartTime", ">", currentMonthStart).Where("StartTime", "<", currentMonthEnd).OrderBy("StartTime", firestore.Asc).Limit(1).Documents(ctx)
+			iter := firestoreClient.Collection("musicmonth").Where("StartTime", ">", currentMonthStart).Where("StartTime", "<", currentMonthEnd).OrderBy("StartTime", firestore.Asc).Limit(1).Documents(ctx)
 			docs, _ := iter.GetAll()
 			if len(docs) == 0 {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -518,7 +553,7 @@ var (
 			// Give a couple of days grace on this - would normally be -now.Day() + 1
 			currentMonthStart := now.AddDate(0, 0, -now.Day()-1)
 			currentMonthEnd := now.AddDate(0, 1, -now.Day())
-			iter := client.Collection("musicmonth").Where("StartTime", ">", currentMonthStart).Where("StartTime", "<", currentMonthEnd).OrderBy("StartTime", firestore.Asc).Limit(1).Documents(ctx)
+			iter := firestoreClient.Collection("musicmonth").Where("StartTime", ">", currentMonthStart).Where("StartTime", "<", currentMonthEnd).OrderBy("StartTime", firestore.Asc).Limit(1).Documents(ctx)
 			docs, _ := iter.GetAll()
 			if len(docs) == 0 {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -535,14 +570,14 @@ var (
 			if len(i.Data.Options) > 1 {
 				day = int(i.Data.Options[1].IntValue())
 			}
-			iter = client.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", month).Where("day", "==", day).Documents(ctx)
+			iter = firestoreClient.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", month).Where("day", "==", day).Documents(ctx)
 			docs, _ = iter.GetAll()
 			if len(docs) > 0 {
 				response.WriteString("Replacing your old pick of " + docs[0].Data()["song"].(string) + "\n")
 				docs[0].Ref.Delete(ctx)
 			}
 
-			client.Collection("music").Add(ctx, map[string]interface{}{
+			firestoreClient.Collection("music").Add(ctx, map[string]interface{}{
 				"userID": i.Member.User.ID,
 				"month":  month,
 				"day":    day,
@@ -577,7 +612,7 @@ func init() {
 }
 
 func checkReminders() {
-	iter := client.Collection("reminders").Where("date", "<", time.Now()).Documents(ctx)
+	iter := firestoreClient.Collection("reminders").Where("date", "<", time.Now()).Documents(ctx)
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {
@@ -602,11 +637,11 @@ func checkReminders() {
 
 func main() {
 	var c *cron.Cron
-	if client != nil {
+	if firestoreClient != nil {
 		c := cron.New()
 		c.AddFunc("@every 1m", func() { checkReminders() })
 		c.Start()
-		defer client.Close()
+		defer firestoreClient.Close()
 	}
 	session.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
 		log.Println("Ready to birdass")
