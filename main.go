@@ -644,6 +644,7 @@ var (
 				if i.Data.Options[0].BoolValue() {
 					// Specific day, user only
 					// Don't make a playlist for one song for one person!
+					day := strconv.Itoa(int(i.Data.Options[1].IntValue()))
 					iter = firestoreClient.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", monthName).Where("day", "==", day).Documents(ctx)
 					docs, _ = iter.GetAll()
 					if len(docs) > 0 {
