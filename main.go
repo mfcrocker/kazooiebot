@@ -626,12 +626,12 @@ var (
 		"musicplaylist": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			iter := firestoreClient.Collection("musicmonth").Where("StartTime", "<", time.Now().UTC()).OrderBy("StartTime", firestore.Desc).Limit(1).Documents(ctx)
 			docs, _ := iter.GetAll()
+			msg, _ := s.FollowupMessageCreate(s.State.User.ID, i.Interaction, true, &discordgo.WebhookParams{
+				Content: "Working on it!",
+			})
 			if len(docs) == 0 {
-				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
-						Content: "No music month past or present found",
-					},
+				s.FollowupMessageEdit(s.State.User.ID, i.Interaction, msg.ID, &discordgo.WebhookEdit{
+					Content: "No music month past or present found",
 				})
 				return
 			}
@@ -648,19 +648,13 @@ var (
 					iter = firestoreClient.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", monthName).Where("day", "==", day).Documents(ctx)
 					docs, _ = iter.GetAll()
 					if len(docs) > 0 {
-						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-							Type: discordgo.InteractionResponseChannelMessageWithSource,
-							Data: &discordgo.InteractionApplicationCommandResponseData{
-								Content: "Your pick for day " + strconv.Itoa(day) + " of " + monthName + " was " + docs[0].Data()["song"].(string),
-							},
+						s.FollowupMessageEdit(s.State.User.ID, i.Interaction, msg.ID, &discordgo.WebhookEdit{
+							Content: "Your pick for day " + strconv.Itoa(day) + " of " + monthName + " was " + docs[0].Data()["song"].(string),
 						})
 						return
 					} else {
-						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-							Type: discordgo.InteractionResponseChannelMessageWithSource,
-							Data: &discordgo.InteractionApplicationCommandResponseData{
-								Content: "I have no pick saved for you for day " + strconv.Itoa(day) + " of " + monthName,
-							},
+						s.FollowupMessageEdit(s.State.User.ID, i.Interaction, msg.ID, &discordgo.WebhookEdit{
+							Content: "I have no pick saved for you for day " + strconv.Itoa(day) + " of " + monthName,
 						})
 						return
 					}
@@ -670,11 +664,8 @@ var (
 					songDocs, _ := iter.GetAll()
 
 					if len(songDocs) == 0 {
-						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-							Type: discordgo.InteractionResponseChannelMessageWithSource,
-							Data: &discordgo.InteractionApplicationCommandResponseData{
-								Content: "No-one has submitted any songs for day " + strconv.Itoa(day) + " of " + monthName,
-							},
+						s.FollowupMessageEdit(s.State.User.ID, i.Interaction, msg.ID, &discordgo.WebhookEdit{
+							Content: "No-one has submitted any songs for day " + strconv.Itoa(day) + " of " + monthName,
 						})
 						return
 					}
@@ -694,11 +685,8 @@ var (
 						call := youtubeClient.Playlists.Insert(part, insertPlaylist)
 						response, err := call.Do()
 						if err != nil {
-							s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-								Type: discordgo.InteractionResponseChannelMessageWithSource,
-								Data: &discordgo.InteractionApplicationCommandResponseData{
-									Content: "Error creating a playlist",
-								},
+							s.FollowupMessageEdit(s.State.User.ID, i.Interaction, msg.ID, &discordgo.WebhookEdit{
+								Content: "Error creating a playlist",
 							})
 							log.Printf("Error creating a playlist: %v", err)
 							return
@@ -727,11 +715,8 @@ var (
 						}
 						response, err := call.Do()
 						if err != nil {
-							s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-								Type: discordgo.InteractionResponseChannelMessageWithSource,
-								Data: &discordgo.InteractionApplicationCommandResponseData{
-									Content: "Error retrieving a playlist",
-								},
+							s.FollowupMessageEdit(s.State.User.ID, i.Interaction, msg.ID, &discordgo.WebhookEdit{
+								Content: "Error retrieving a playlist",
 							})
 							log.Printf("Error retrieving a playlist: %v", err)
 							return
@@ -776,11 +761,8 @@ var (
 							call := youtubeClient.PlaylistItems.Insert(part, video)
 							_, err := call.Do()
 							if err != nil {
-								s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-									Type: discordgo.InteractionResponseChannelMessageWithSource,
-									Data: &discordgo.InteractionApplicationCommandResponseData{
-										Content: "Error updating a playlist",
-									},
+								s.FollowupMessageEdit(s.State.User.ID, i.Interaction, msg.ID, &discordgo.WebhookEdit{
+									Content: "Error updating a playlist",
 								})
 								log.Printf("Error updating a playlist: %v", err)
 								return
@@ -801,22 +783,16 @@ var (
 							call := youtubeClient.PlaylistItems.Delete(ytsong.Id)
 							err := call.Do()
 							if err != nil {
-								s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-									Type: discordgo.InteractionResponseChannelMessageWithSource,
-									Data: &discordgo.InteractionApplicationCommandResponseData{
-										Content: "Error updating a playlist",
-									},
+								s.FollowupMessageEdit(s.State.User.ID, i.Interaction, msg.ID, &discordgo.WebhookEdit{
+									Content: "Error updating a playlist",
 								})
 								log.Printf("Error updating a playlist: %v", err)
 								return
 							}
 						}
 					}
-					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-						Type: discordgo.InteractionResponseChannelMessageWithSource,
-						Data: &discordgo.InteractionApplicationCommandResponseData{
-							Content: "Playlist for " + monthName + " Day " + strconv.Itoa(day) + ": https://youtube.com/playlist?list=" + playlistID,
-						},
+					s.FollowupMessageEdit(s.State.User.ID, i.Interaction, msg.ID, &discordgo.WebhookEdit{
+						Content: "Playlist for " + monthName + " Day " + strconv.Itoa(day) + ": https://youtube.com/playlist?list=" + playlistID,
 					})
 					return
 				}
