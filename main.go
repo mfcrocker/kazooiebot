@@ -593,7 +593,7 @@ var (
 
 			var retrievedMonth month
 			docs[0].DataTo(&retrievedMonth)
-			monthName := retrievedMonth.StartTime.Format("Jan 2006"
+			monthName := retrievedMonth.StartTime.Format("Jan 2006")
 			day := now.Day()
 			if len(i.Data.Options) > 1 {
 				day = int(i.Data.Options[1].IntValue())
