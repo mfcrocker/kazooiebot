@@ -835,6 +835,9 @@ func updateAndCreatePlaylist(monthName, userID, username string, day int) string
 		}
 	}
 
+	if day == 0 {
+		return "Playlist for " + monthName + ": https://youtube.com/playlist?list=" + playlistID
+	}
 	return "Playlist for " + monthName + " Day " + strconv.Itoa(day) + ": https://youtube.com/playlist?list=" + playlistID
 }
 
