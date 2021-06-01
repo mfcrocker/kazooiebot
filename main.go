@@ -641,10 +641,10 @@ var (
 			monthName := retrievedMonth.StartTime.Format("Jan 2006")
 
 			if len(i.Data.Options) > 1 {
+				day := int(i.Data.Options[1].IntValue())
 				if i.Data.Options[0].BoolValue() {
 					// Specific day, user only
 					// Don't make a playlist for one song for one person!
-					day := int(i.Data.Options[1].IntValue())
 					iter = firestoreClient.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", monthName).Where("day", "==", day).Documents(ctx)
 					log.Printf("Getting song for user %v for day %v of %v", i.Member.User.ID, day, monthName)
 					docs, _ = iter.GetAll()
@@ -667,6 +667,147 @@ var (
 					}
 				} else {
 					// Specific day, whole server
+					iter = firestoreClient.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", monthName).Where("day", "==", day).Documents(ctx)
+					songDocs, _ := iter.GetAll()
+
+					if len(songDocs) == 0 {
+						s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+							Type: discordgo.InteractionResponseChannelMessageWithSource,
+							Data: &discordgo.InteractionApplicationCommandResponseData{
+								Content: "No-one has submitted any songs for day " + strconv.Itoa(day) + " of " + monthName,
+							},
+						})
+						return
+					}
+					iter = firestoreClient.Collection("musicplaylists").Where("userID", "==", "").Where("month", "==", monthName).Where("day", "==", day).Documents(ctx)
+					playlistDocs, _ := iter.GetAll()
+					playlistID := ""
+					if len(playlistDocs) == 0 {
+						// Create a new playlist
+						insertPlaylist := &youtube.Playlist{
+							Snippet: &youtube.PlaylistSnippet{
+								Title:       "Speedfriends Music Month: " + monthName + " Day " + strconv.Itoa(day),
+								Description: "All the songs posted on day " + strconv.Itoa(day) + " of " + monthName + "'s music month in Speedfriends",
+							},
+							Status: &youtube.PlaylistStatus{PrivacyStatus: "unlisted"},
+						}
+						part := []string{"snippet", "status"}
+						call := youtubeClient.Playlists.Insert(part, insertPlaylist)
+						response, err := call.Do()
+						if err != nil {
+							s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+								Type: discordgo.InteractionResponseChannelMessageWithSource,
+								Data: &discordgo.InteractionApplicationCommandResponseData{
+									Content: "Error creating a playlist",
+								},
+							})
+							log.Printf("Error creating a playlist: %v", err)
+							return
+						}
+						firestoreClient.Collection("musicplaylists").Add(ctx, map[string]interface{}{
+							"userID":     "",
+							"month":      monthName,
+							"day":        day,
+							"playlistID": response.Id,
+						})
+
+						playlistID = response.Id
+					} else {
+						playlistID = docs[0].Data()["playlistID"].(string)
+					}
+
+					// Check all the songs on the playlist match the songs we have saved, and insert/delete as appropriate
+					pageToken := ""
+					var playlistVideos []*youtube.PlaylistItem
+					for {
+						part := []string{"contentDetails"}
+						call := youtubeClient.PlaylistItems.List(part)
+						call = call.PlaylistId(playlistID)
+						if pageToken != "" {
+							call = call.PageToken(pageToken)
+						}
+						response, err := call.Do()
+						if err != nil {
+							s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+								Type: discordgo.InteractionResponseChannelMessageWithSource,
+								Data: &discordgo.InteractionApplicationCommandResponseData{
+									Content: "Error retrieving a playlist",
+								},
+							})
+							log.Printf("Error retrieving a playlist: %v", err)
+							return
+						}
+
+						playlistVideos = append(playlistVideos, response.Items...)
+						pageToken = response.NextPageToken
+						if pageToken == "" {
+							break
+						}
+					}
+
+					// Check the songs we have our end are in the playlist and add if necessary
+					for _, gcpsong := range songDocs {
+						gcpID := strings.Split(strings.Split(gcpsong.Data()["song"].(string), "=")[1], "&")[0]
+						inPlaylist := false
+						if !strings.Contains(gcpsong.Data()["song"].(string), "youtube") {
+							continue
+						}
+						for _, ytsong := range playlistVideos {
+							if gcpID == ytsong.ContentDetails.VideoId {
+								inPlaylist = true
+								break
+							}
+						}
+						if !inPlaylist {
+							part := []string{"snippet"}
+							video := &youtube.PlaylistItem{
+								Snippet: &youtube.PlaylistItemSnippet{
+									PlaylistId: playlistID,
+									ResourceId: &youtube.ResourceId{
+										Kind:    "youtube#video",
+										VideoId: gcpID,
+									},
+								},
+							}
+							call := youtubeClient.PlaylistItems.Insert(part, video)
+							_, err := call.Do()
+							if err != nil {
+								s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+									Type: discordgo.InteractionResponseChannelMessageWithSource,
+									Data: &discordgo.InteractionApplicationCommandResponseData{
+										Content: "Error updating a playlist",
+									},
+								})
+								log.Printf("Error updating a playlist: %v", err)
+								return
+							}
+						}
+					}
+
+					// Check the songs we have on YouTube's end are in GCP and delete if necessary
+					for _, ytsong := range playlistVideos {
+						inGCP := false
+						for _, gcpsong := range songDocs {
+							if strings.Contains(gcpsong.Data()["song"].(string), ytsong.ContentDetails.VideoId) {
+								inGCP = true
+								break
+							}
+						}
+						if !inGCP {
+							call := youtubeClient.PlaylistItems.Delete(ytsong.Id)
+							err := call.Do()
+							if err != nil {
+								s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+									Type: discordgo.InteractionResponseChannelMessageWithSource,
+									Data: &discordgo.InteractionApplicationCommandResponseData{
+										Content: "Error updating a playlist",
+									},
+								})
+								log.Printf("Error updating a playlist: %v", err)
+								return
+							}
+						}
+					}
 				}
 			} else {
 				if i.Data.Options[0].BoolValue() {
