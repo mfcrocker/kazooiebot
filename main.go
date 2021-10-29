@@ -381,7 +381,7 @@ var (
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionApplicationCommandResponseData{
-					Flags: 64,
+					Content: "Suggestion received, thanks!",
 				},
 			})
 			channel, err := session.UserChannelCreate(fmt.Sprintf("%v", "147856569730596864"))
