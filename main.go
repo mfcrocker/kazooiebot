@@ -337,6 +337,9 @@ var (
 				}
 				offset += days * 24
 				parseString = strings.Split(timeString, "d")[1]
+				if parseString == "" {
+					parseString = "0h"
+				}
 			}
 
 			parsedDuration, err := time.ParseDuration(parseString)
