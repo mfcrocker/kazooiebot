@@ -247,6 +247,10 @@ var (
 				},
 			},
 		},
+		{
+			Name:        "about",
+			Description: "Find out about this bot of bird and ass",
+		},
 	}
 
 	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
@@ -692,6 +696,14 @@ var (
 					return
 				}
 			}
+		},
+		"about": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionApplicationCommandResponseData{
+					Content: "This is Kazooiebot, a bot set up just for the Speedfriends developed and hosted by mfcrocker\nYou can find the source code at https://github.com/mfcrocker/kazooiebot",
+				},
+			})
 		},
 	}
 )
