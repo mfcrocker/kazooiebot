@@ -603,7 +603,19 @@ var (
 			monthName := retrievedMonth.StartTime.Format("Jan 2006")
 			day := now.Day()
 			if len(i.Data.Options) > 1 {
-				day = int(i.Data.Options[1].IntValue())
+				newDay := int(i.Data.Options[1].IntValue())
+				maxDay := 
+				if newDay >= 1 && newDay <= currentMonthEnd.Day() {
+					day = newDay
+				} else {
+					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+						Type: discordgo.InteractionResponseChannelMessageWithSource,
+						Data: &discordgo.InteractionApplicationCommandResponseData{
+							Content: "The given day is invalid.",
+						},
+					})
+					return
+				}
 			}
 
 			var response strings.Builder
