@@ -604,7 +604,6 @@ var (
 			day := now.Day()
 			if len(i.Data.Options) > 1 {
 				newDay := int(i.Data.Options[1].IntValue())
-				maxDay := 
 				if newDay >= 1 && newDay <= currentMonthEnd.Day() {
 					day = newDay
 				} else {
