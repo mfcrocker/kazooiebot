@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -108,6 +109,10 @@ var (
 		{
 			Name:        "birdass",
 			Description: "Just birdass",
+		},
+		{
+			Name:        "hup",
+			Description: "hup",
 		},
 		{
 			Name:        "addrole",
@@ -259,6 +264,19 @@ var (
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionApplicationCommandResponseData{
 					Content: "just birdass",
+				},
+			})
+		},
+		"hup": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			up := rand.Intn(100)
+			gif := "https://tenor.com/view/kitten-cat-jump-running-cute-gif-21817165"
+			if up < 5 {
+				gif = "https://cdn.discordapp.com/attachments/990457249161961502/991831809501450361/etr5se.gif"
+			}
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionApplicationCommandResponseData{
+					Content: gif,
 				},
 			})
 		},
