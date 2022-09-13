@@ -271,7 +271,7 @@ var (
 			up := rand.Intn(100)
 			gif := "https://tenor.com/view/kitten-cat-jump-running-cute-gif-21817165"
 			if up < 5 {
-				gif = "https://cdn.discordapp.com/attachments/990457249161961502/991831809501450361/etr5se.gif"
+				gif = "https://cdn.discordapp.com/attachments/401890282309812225/1015239767891390517/etr5se.gif"
 			}
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
