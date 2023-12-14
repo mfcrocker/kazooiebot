@@ -234,7 +234,7 @@ var (
 				},
 			},
 		},
-		{
+		/*{
 			Name:        "musicplaylist",
 			Description: "Create/retrieve a playlist of your songs for the most recent music month",
 			Options: []*discordgo.ApplicationCommandOption{
@@ -251,7 +251,7 @@ var (
 					Required:    false,
 				},
 			},
-		},
+		},*/
 		{
 			Name:        "about",
 			Description: "Find out about this bot of bird and ass",
@@ -659,7 +659,7 @@ var (
 				},
 			})
 		},
-		"musicplaylist": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+		/*"musicplaylist": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			iter := firestoreClient.Collection("musicmonth").Where("StartTime", "<", time.Now().UTC()).OrderBy("StartTime", firestore.Desc).Limit(1).Documents(ctx)
 			docs, _ := iter.GetAll()
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -725,7 +725,7 @@ var (
 					return
 				}
 			}
-		},
+		},*/
 		"about": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
