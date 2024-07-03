@@ -115,6 +115,10 @@ var (
 			Description: "hup",
 		},
 		{
+			Name:        "latersluts",
+			Description: "we outtie",
+		},
+		{
 			Name:        "addrole",
 			Description: "Add a role to yourself, eg pronouns or colours",
 			Options: []*discordgo.ApplicationCommandOption{
@@ -271,6 +275,19 @@ var (
 			up := rand.Intn(100)
 			gif := "https://tenor.com/view/kitten-cat-jump-running-cute-gif-21817165"
 			if up < 5 {
+				gif = "https://storage.googleapis.com/musicmonth/hUP.gif"
+			}
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionApplicationCommandResponseData{
+					Content: gif,
+				},
+			})
+		},
+		"latersluts": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			up := rand.Intn(100)
+			gif := "https://tenor.com/view/kitten-cat-jump-running-cute-gif-21817165"
+			if up < 95 {
 				gif = "https://storage.googleapis.com/musicmonth/hUP.gif"
 			}
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
