@@ -266,7 +266,7 @@ var (
 		"birdass": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
+				Data: &discordgo.InteractionResponseData{
 					Content: "just birdass",
 				},
 			})
@@ -279,7 +279,7 @@ var (
 			}
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
+				Data: &discordgo.InteractionResponseData{
 					Content: gif,
 				},
 			})
@@ -292,42 +292,46 @@ var (
 			}
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
+				Data: &discordgo.InteractionResponseData{
 					Content: gif,
 				},
 			})
 		},
 		"addrole": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			role := i.ApplicationCommandData().Options[0].RoleValue(s, i.GuildID)
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
-					Flags: 64,
+				Data: &discordgo.InteractionResponseData{
+					Flags:   64,
+					Content: "Successfully added role `" + role.Name + "`",
 				},
 			})
-			s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, i.Data.Options[0].RoleValue(nil, "").ID)
+			s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, role.ID)
 		},
 		"removerole": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+			role := i.ApplicationCommandData().Options[0].RoleValue(nil, "")
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
-					Flags: 64,
+				Data: &discordgo.InteractionResponseData{
+					Flags:   64,
+					Content: "Successfully removed role `" + role.Name + "`",
 				},
 			})
-			s.GuildMemberRoleRemove(i.GuildID, i.Member.User.ID, i.Data.Options[0].RoleValue(nil, "").ID)
+			s.GuildMemberRoleRemove(i.GuildID, i.Member.User.ID, role.ID)
 		},
 		"bigemoji": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			valid, _ := regexp.MatchString(`<a?:\w+:\d+>`, i.Data.Options[0].StringValue())
+			valid, _ := regexp.MatchString(`<a?:\w+:\d+>`, i.ApplicationCommandData().Options[0].StringValue())
 			if !valid {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Flags: 64,
 					},
 				})
 				return
 			}
-			emojiID := strings.TrimSuffix(strings.Split(i.Data.Options[0].StringValue(), ":")[2], ">")
-			animated, _ := regexp.MatchString(`<a:\w+:\d+>`, i.Data.Options[0].StringValue())
+			emojiID := strings.TrimSuffix(strings.Split(i.ApplicationCommandData().Options[0].StringValue(), ":")[2], ">")
+			animated, _ := regexp.MatchString(`<a:\w+:\d+>`, i.ApplicationCommandData().Options[0].StringValue())
 			suffix := ".png?v=1"
 			if animated {
 				suffix = ".gif?v=1"
@@ -335,7 +339,7 @@ var (
 			emojiURI := "https://cdn.discordapp.com/emojis/" + emojiID + suffix
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
+				Data: &discordgo.InteractionResponseData{
 					Content: emojiURI,
 				},
 			})
@@ -343,7 +347,7 @@ var (
 		"bogart": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
+				Data: &discordgo.InteractionResponseData{
 					Content: "https://cdn.discordapp.com/emojis/721104351220727859.png?v=1",
 				},
 			})
@@ -353,13 +357,13 @@ var (
 				// We're not connected to GCP, don't let them do this
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Content: "I haven't been set up to allow reminders, please moan at whoever set me up",
 					},
 				})
 				return
 			}
-			timeString := i.Data.Options[1].StringValue()
+			timeString := i.ApplicationCommandData().Options[1].StringValue()
 			offset := 0
 			parseString := timeString
 			if strings.Contains(timeString, "d") {
@@ -368,7 +372,7 @@ var (
 				if err != nil {
 					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 						Type: discordgo.InteractionResponseChannelMessageWithSource,
-						Data: &discordgo.InteractionApplicationCommandResponseData{
+						Data: &discordgo.InteractionResponseData{
 							Content: "That's not the right date or time format. Example: 5d3h30m for a reminder in 5 1/2 hours",
 						},
 					})
@@ -387,7 +391,7 @@ var (
 			if err != nil {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Content: "That's not the right date or time format. Example: 5d3h30m for a reminder in 5 1/2 hours",
 					},
 				})
@@ -397,14 +401,14 @@ var (
 
 			_, _, err = firestoreClient.Collection("reminders").Add(ctx, map[string]interface{}{
 				"userID":   i.Member.User.ID,
-				"reminder": i.Data.Options[0].StringValue(),
+				"reminder": i.ApplicationCommandData().Options[0].StringValue(),
 				"date":     reminderTimestamp,
 			})
 
 			if err != nil {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Content: "Something went wrong at my end so I didn't save your reminder",
 					},
 				})
@@ -414,15 +418,15 @@ var (
 
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
-					Content: "Okay, I've set a reminder up to remind you of " + i.Data.Options[0].StringValue(),
+				Data: &discordgo.InteractionResponseData{
+					Content: "Okay, I've set a reminder up to remind you of " + i.ApplicationCommandData().Options[0].StringValue(),
 				},
 			})
 		},
 		"suggestion": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
+				Data: &discordgo.InteractionResponseData{
 					Content: "Suggestion received, thanks!",
 				},
 			})
@@ -430,12 +434,12 @@ var (
 			if err != nil {
 				fmt.Printf("Couldn't talk to user: %v", err)
 			}
-			_, err = session.ChannelMessageSend(channel.ID, "You've had a suggestion from "+i.Member.User.Username+": "+i.Data.Options[0].StringValue())
+			_, err = session.ChannelMessageSend(channel.ID, "You've had a suggestion from "+i.Member.User.Username+": "+i.ApplicationCommandData().Options[0].StringValue())
 		},
 		"utc": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
+				Data: &discordgo.InteractionResponseData{
 					Content: "The current time is: " + time.Now().UTC().Format("15:04:05 MST Jan _2"),
 				},
 			})
@@ -445,7 +449,7 @@ var (
 				// We're not connected to GCP, don't let them do this
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Content: "I haven't been set up to allow music months, please moan at whoever set me up",
 					},
 				})
@@ -455,27 +459,27 @@ var (
 				// You ain't me
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Content: "Please ask mfcrocker to set this up!",
 					},
 				})
 				return
 			}
-			if !strings.HasSuffix(i.Data.Options[0].StringValue(), ".json") {
+			if !strings.HasSuffix(i.ApplicationCommandData().Options[0].StringValue(), ".json") {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Content: "Give me a .json file",
 					},
 				})
 				return
 			}
 
-			resp, err := http.Get(i.Data.Options[0].StringValue())
+			resp, err := http.Get(i.ApplicationCommandData().Options[0].StringValue())
 			if err != nil {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Content: "Couldn't get the file from the URL provided",
 					},
 				})
@@ -487,7 +491,7 @@ var (
 			if err != nil {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Content: "Error reading the file bytes",
 					},
 				})
@@ -499,7 +503,7 @@ var (
 			if err != nil {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Content: "Invalid JSON",
 					},
 				})
@@ -511,7 +515,7 @@ var (
 			if err != nil {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Content: "Something went wrong at my end so I didn't save the month",
 					},
 				})
@@ -521,7 +525,7 @@ var (
 
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
+				Data: &discordgo.InteractionResponseData{
 					Content: "Okay, I've set up a music month beginning on " + musicMonth.StartTime.Format(prettyDateFormat),
 				},
 			})
@@ -531,7 +535,7 @@ var (
 				// We're not connected to GCP, don't let them do this
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Content: "I haven't been set up to allow music months, please moan at whoever set me up",
 					},
 				})
@@ -546,7 +550,7 @@ var (
 			if len(docs) == 0 {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Content: "No music month planned",
 					},
 				})
@@ -570,7 +574,7 @@ var (
 
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
+				Data: &discordgo.InteractionResponseData{
 					Content: response.String(),
 				},
 			})
@@ -578,8 +582,8 @@ var (
 		"musicprompt": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			now := time.Now().UTC()
 			day := now.Day()
-			if len(i.Data.Options) > 0 {
-				day = int(i.Data.Options[0].IntValue())
+			if len(i.ApplicationCommandData().Options) > 0 {
+				day = int(i.ApplicationCommandData().Options[0].IntValue())
 			}
 
 			// Give a couple of days grace on this - would normally be -now.Day() + 1
@@ -590,7 +594,7 @@ var (
 			if len(docs) == 0 {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Content: "No currently active music month",
 					},
 				})
@@ -602,7 +606,7 @@ var (
 				if prompt.Day == day {
 					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 						Type: discordgo.InteractionResponseChannelMessageWithSource,
-						Data: &discordgo.InteractionApplicationCommandResponseData{
+						Data: &discordgo.InteractionResponseData{
 							Content: "Prompt for day " + strconv.Itoa(prompt.Day) + ": " + prompt.Prompt,
 						},
 					})
@@ -611,7 +615,7 @@ var (
 			}
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
+				Data: &discordgo.InteractionResponseData{
 					Content: "No prompt found for day " + strconv.Itoa(day),
 				},
 			})
@@ -626,7 +630,7 @@ var (
 			if len(docs) == 0 {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
-					Data: &discordgo.InteractionApplicationCommandResponseData{
+					Data: &discordgo.InteractionResponseData{
 						Content: "No currently active music month",
 					},
 				})
@@ -637,14 +641,14 @@ var (
 			docs[0].DataTo(&retrievedMonth)
 			monthName := retrievedMonth.StartTime.Format("Jan 2006")
 			day := now.Day()
-			if len(i.Data.Options) > 1 {
-				newDay := int(i.Data.Options[1].IntValue())
+			if len(i.ApplicationCommandData().Options) > 1 {
+				newDay := int(i.ApplicationCommandData().Options[1].IntValue())
 				if newDay >= 1 && newDay <= currentMonthEnd.Day() {
 					day = newDay
 				} else {
 					s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 						Type: discordgo.InteractionResponseChannelMessageWithSource,
-						Data: &discordgo.InteractionApplicationCommandResponseData{
+						Data: &discordgo.InteractionResponseData{
 							Content: "The given day is invalid.",
 						},
 					})
@@ -665,13 +669,13 @@ var (
 				"userID": i.Member.User.ID,
 				"month":  monthName,
 				"day":    day,
-				"song":   i.Data.Options[0].StringValue(),
+				"song":   i.ApplicationCommandData().Options[0].StringValue(),
 			})
 
-			response.WriteString("Submitting " + i.Data.Options[0].StringValue() + " for day " + strconv.Itoa(day))
+			response.WriteString("Submitting " + i.ApplicationCommandData().Options[0].StringValue() + " for day " + strconv.Itoa(day))
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
+				Data: &discordgo.InteractionResponseData{
 					Content: response.String(),
 				},
 			})
@@ -681,7 +685,7 @@ var (
 			docs, _ := iter.GetAll()
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
+				Data: &discordgo.InteractionResponseData{
 					Content: "Getting your playlist",
 				},
 			})
@@ -699,9 +703,9 @@ var (
 			docs[0].DataTo(&retrievedMonth)
 			monthName := retrievedMonth.StartTime.Format("Jan 2006")
 
-			if len(i.Data.Options) > 1 {
-				day := int(i.Data.Options[1].IntValue())
-				if i.Data.Options[0].BoolValue() {
+			if len(i.ApplicationCommandData().Options) > 1 {
+				day := int(i.ApplicationCommandData().Options[1].IntValue())
+				if i.ApplicationCommandData().Options[0].BoolValue() {
 					// Specific day, user only
 					// Don't make a playlist for one song for one person!
 					iter = firestoreClient.Collection("music").Where("userID", "==", i.Member.User.ID).Where("month", "==", monthName).Where("day", "==", day).Documents(ctx)
@@ -726,7 +730,7 @@ var (
 					return
 				}
 			} else {
-				if i.Data.Options[0].BoolValue() {
+				if i.ApplicationCommandData().Options[0].BoolValue() {
 					// Whole month, user only
 					response := updateAndCreatePlaylist(monthName, i.Member.User.ID, i.Member.User.Username, 0)
 					s.FollowupMessageEdit(s.State.User.ID, i.Interaction, msg.ID, &discordgo.WebhookEdit{
@@ -746,7 +750,7 @@ var (
 		"about": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionApplicationCommandResponseData{
+				Data: &discordgo.InteractionResponseData{
 					Content: "This is Kazooiebot, a bot set up just for the Speedfriends developed and hosted by mfcrocker\nYou can find the source code at https://github.com/mfcrocker/kazooiebot",
 				},
 			})
@@ -904,7 +908,7 @@ func updateAndCreatePlaylist(monthName, userID, username string, day int) string
 
 func init() {
 	session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		if h, ok := commandHandlers[i.Data.Name]; ok {
+		if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
 			h(s, i)
 		}
 	})
