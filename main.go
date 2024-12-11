@@ -3,9 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -20,6 +19,7 @@ import (
 	firebase "firebase.google.com/go"
 	"github.com/bwmarrin/discordgo"
 	"github.com/robfig/cron/v3"
+	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/iterator"
@@ -27,12 +27,11 @@ import (
 	"google.golang.org/api/youtube/v3"
 )
 
-var (
-	GuildID      = flag.String("g", "", "Guild ID")
-	BotToken     = flag.String("t", "", "Bot token")
-	GCPProject   = flag.String("p", "", "GCP Project")
-	YouTubeToken = flag.String("y", "", "YouTube token")
-)
+var GuildID string
+var BotToken string
+var GCPProject string
+var YouTubeToken string
+var BirdAsses int
 
 var session *discordgo.Session
 var ctx context.Context
@@ -51,17 +50,30 @@ type day struct {
 	Prompt string `json:"prompt"`
 }
 
-func init() { flag.Parse() }
-
 func init() {
 	var err error
-	session, err = discordgo.New("Bot " + *BotToken)
+	viper.SetConfigFile(".env")
+	if err = viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			log.Fatalf("Can't find .env file")
+		}
+	}
+
+	viper.SetDefault("BIRDASSES", 0)
+	viper.SetDefault("GCPPROJECT", "")
+	viper.SetDefault("YOUTUBETOKEN", "")
+	GuildID = viper.GetString("GUILDID")
+	BotToken = viper.GetString("BOTTOKEN")
+	GCPProject = viper.GetString("GCPPROJECT")
+	YouTubeToken = viper.GetString("YOUTUBETOKEN")
+	BirdAsses = viper.GetInt("BIRDASSES")
+	session, err = discordgo.New("Bot " + BotToken)
 	if err != nil {
 		log.Fatalf("Missing bot parameters: %v", err)
 	}
 
 	ctx = context.Background()
-	conf := &firebase.Config{ProjectID: *GCPProject}
+	conf := &firebase.Config{ProjectID: GCPProject}
 	app, err := firebase.NewApp(ctx, conf)
 	if err != nil {
 		log.Printf("Couldn't connect to Firestore, so many commands will not work: %v", err)
@@ -74,7 +86,7 @@ func init() {
 		return
 	}
 
-	data, err := ioutil.ReadFile("client_secret.json")
+	data, err := os.ReadFile("client_secret.json")
 	if err != nil {
 		log.Printf("Couldn't find or decode client_secret.json; YouTube integration will fail: %v", err)
 		return
@@ -85,13 +97,13 @@ func init() {
 		return
 	}
 
-	if *YouTubeToken == "" {
+	if YouTubeToken == "" {
 		url := config.AuthCodeURL("state", oauth2.AccessTypeOffline)
-		fmt.Printf("Please visit the URL for YouTube auth, then restart this with the -y flag: %v. YouTube integration will fail without the flag.", url)
+		fmt.Printf("Please visit the URL for YouTube auth, then restart this with the YOUTUBETOKEN .env variable. YouTube integration will fail without the variable.", url)
 		return
 	}
 
-	token, err := config.Exchange(ctx, *YouTubeToken)
+	token, err := config.Exchange(ctx, YouTubeToken)
 	if err != nil {
 		log.Printf("Couldn't connect to YouTube; YouTube integration will fail: %v", err)
 		return
@@ -487,7 +499,7 @@ var (
 			}
 			defer resp.Body.Close()
 
-			monthData, err := ioutil.ReadAll(resp.Body)
+			monthData, err := io.ReadAll(resp.Body)
 			if err != nil {
 				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 					Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -955,7 +967,7 @@ func main() {
 	}
 
 	for _, v := range commands {
-		_, err := session.ApplicationCommandCreate(session.State.User.ID, *GuildID, v)
+		_, err := session.ApplicationCommandCreate(session.State.User.ID, GuildID, v)
 		if err != nil {
 			log.Fatalf("Couldn't create '%v' command: %v", v.Name, err)
 		}
